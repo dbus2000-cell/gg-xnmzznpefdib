@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>제미나이 그림</title>
+<style>
+:root { --bg:#f4f4f6; --card:#fff; --ink:#1b1b1f; --sub:#6b6b75; --line:#e2e2e8; --acc:#3b5bdb; --bad:#c92a2a; --ok:#2b8a3e; }
+@media (prefers-color-scheme: dark) { :root { --bg:#141416; --card:#1f1f23; --ink:#ececf1; --sub:#9a9aa5; --line:#33333a; --acc:#748ffc; --bad:#ff8787; --ok:#69db7c; } }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui, "Malgun Gothic", sans-serif; }
+main { max-width:760px; margin:0 auto; padding:16px; }
+h1 { font-size:20px; margin:4px 0 12px; display:flex; justify-content:space-between; align-items:center; }
+h1 button { font-size:13px; font-weight:normal; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:14px; margin-bottom:12px; }
+.label { font-size:13px; color:var(--sub); margin-bottom:6px; }
+#refs { display:flex; flex-wrap:wrap; gap:8px; }
+.ref { position:relative; width:104px; }
+.ref img { width:104px; height:104px; object-fit:contain; background:#8881; border-radius:10px; border:1px solid var(--line); display:block; }
+.ref .n { position:absolute; left:4px; top:4px; background:var(--acc); color:#fff; font-size:12px; border-radius:8px; padding:0 6px; }
+.ref .bt { display:flex; gap:4px; margin-top:4px; }
+.ref .bt button { flex:1; padding:2px 0; font-size:13px; }
+#drop { border:2px dashed var(--line); border-radius:12px; padding:12px; text-align:center; color:var(--sub); font-size:14px; margin-top:8px; }
+#drop.over { border-color:var(--acc); color:var(--acc); }
+button, select, textarea, input { font:inherit; color:inherit; }
+button { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px 12px; cursor:pointer; }
+select, input[type=password], input[type=text] { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:8px; width:100%; }
+textarea { width:100%; min-height:90px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px; resize:vertical; }
+.grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+#go { width:100%; background:var(--acc); color:#fff; border:none; font-size:18px; padding:14px; border-radius:12px; margin-top:10px; }
+#go:disabled { opacity:.55; }
+.note { font-size:14px; color:var(--sub); margin-top:8px; }
+.msg { margin-top:10px; padding:10px 12px; border-radius:10px; font-size:15px; display:none; }
+.msg.bad { display:block; background:#c92a2a1a; color:var(--bad); }
+.msg.ok { display:block; background:#2b8a3e1a; color:var(--ok); }
+#resimgs img { max-width:100%; border-radius:12px; display:block; margin:0 auto; }
+.row { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; align-items:center; }
+#gal { display:grid; grid-template-columns:repeat(auto-fill, minmax(90px, 1fr)); gap:6px; margin-top:8px; }
+#gal img { width:100%; aspect-ratio:1; object-fit:cover; border-radius:8px; cursor:pointer; border:1px solid var(--line); }
+#keybox { display:none; }
+a.btn { text-decoration:none; }
+</style>
+</head>
+<body>
+<main>
+<h1>제미나이 그림 <button id="keybtn">API 키</button></h1>
+
+<div class="card" id="keybox">
+  <div class="label">Gemini API 키를 넣어줘. 이 기기 브라우저에만 저장되고, 구글 말고는 어디에도 안 보내.</div>
+  <input type="password" id="key" placeholder="AIza..." autocomplete="off">
+  <div class="row"><button id="keysave">저장</button><button id="keydel">이 기기에서 키 지우기</button></div>
+</div>
+
+<div class="card">
+  <div class="label">넣을 그림 (순서대로 Image 1, Image 2 ...)</div>
+  <div id="refs"></div>
+  <div class="row">
+    <button id="add">그림 추가</button>
+    <button id="clear">전부 빼기</button>
+  </div>
+  <input type="file" id="file" accept="image/*" multiple hidden>
+  <div id="drop">PC에선 여기에 끌어다 놓거나 Ctrl+V로 붙여넣어도 돼</div>
+</div>
+
+<div class="card">
+  <div class="label">할 말 (쓴 그대로 보내)</div>
+  <textarea id="prompt" placeholder="예: 왼쪽캐릭터를 오른쪽 규격과 그림체 스타일로 만들어줘"></textarea>
+</div>
+
+<div class="card">
+  <div class="grid">
+    <div><div class="label">모델</div>
+      <select id="model"><option value="gemini-3-pro-image">나노바나나 프로</option><option value="gemini-3.1-flash-image">나노바나나 2</option></select></div>
+    <div><div class="label">요금</div>
+      <select id="tier"><option value="flex">반값 (Flex)</option><option value="standard">정가</option></select></div>
+    <div><div class="label">크기</div>
+      <select id="size"><option>1K</option><option selected>2K</option><option>4K</option></select></div>
+    <div><div class="label">비율</div>
+      <select id="ar"><option value="">자동</option><option>1:1</option><option>3:4</option><option>4:3</option><option>2:3</option><option>3:2</option><option>9:16</option><option>16:9</option><option>4:5</option><option>5:4</option><option>21:9</option></select></div>
+  </div>
+  <div class="note" id="flexnote"></div>
+  <button id="go">그리기</button>
+  <div class="msg" id="msg"></div>
+</div>
+
+<div class="card" id="result" style="display:none">
+  <div class="label">결과</div>
+  <div id="resimgs"></div>
+</div>
+
+<div class="card">
+  <div class="row" style="justify-content:space-between;margin-top:0">
+    <div class="label" style="margin:0">이 기기에서 그린 최근 그림 (누르면 크게)</div>
+    <span class="note" style="margin:0" id="spent"></span>
+  </div>
+  <div id="gal"></div>
+  <div class="row"><button id="logdl">사용 기록 내려받기</button></div>
+</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const PRICE = { 'gemini-3-pro-image|1K': 195, 'gemini-3-pro-image|2K': 195, 'gemini-3-pro-image|4K': 350,
+                'gemini-3.1-flash-image|1K': 100, 'gemini-3.1-flash-image|2K': 150, 'gemini-3.1-flash-image|4K': 220 };
+const ls = { get(k, d) { try { const v = localStorage.getItem('gg_' + k); return v === null ? d : v; } catch (e) { return d; } },
+             set(k, v) { try { localStorage.setItem('gg_' + k, v); } catch (e) {} },
+             del(k) { try { localStorage.removeItem('gg_' + k); } catch (e) {} } };
+let refs = [], busy = false;
+
+// ---- 키 ----
+function showKey(open) { $('keybox').style.display = open ? 'block' : 'none'; }
+$('keybtn').onclick = () => showKey($('keybox').style.display !== 'block');
+$('keysave').onclick = () => { const k = $('key').value.trim(); if (!k) return; ls.set('key', k); $('key').value = ''; showKey(false); showMsg('키 저장했어.', 'ok'); };
+$('keydel').onclick = () => { ls.del('key'); showMsg('이 기기에서 키를 지웠어.', 'ok'); };
+
+// ---- 그림 넣기 ----
+function shrink(src) {   // 긴 변 1600으로 줄여 PNG로 (PC 스크립트와 같은 크기)
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, 1600 / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      res(c.toDataURL('image/png'));
+    };
+    img.onerror = rej;
+    img.src = typeof src === 'string' ? src : URL.createObjectURL(src);
+  });
+}
+async function addFiles(files) {
+  for (const f of files) { if (f.type && !f.type.startsWith('image/')) continue; try { refs.push(await shrink(f)); } catch (e) {} }
+  drawRefs();
+}
+function drawRefs() {
+  const box = $('refs'); box.innerHTML = '';
+  refs.forEach((d, i) => {
+    const el = document.createElement('div'); el.className = 'ref';
+    el.innerHTML = '<img><span class="n">' + (i + 1) + '</span><div class="bt"><button data-a="l">◀</button><button data-a="x">빼기</button></div>';
+    el.querySelector('img').src = d;
+    el.querySelector('[data-a=l]').onclick = () => { if (i > 0) { [refs[i - 1], refs[i]] = [refs[i], refs[i - 1]]; drawRefs(); } };
+    el.querySelector('[data-a=x]').onclick = () => { refs.splice(i, 1); drawRefs(); };
+    box.appendChild(el);
+  });
+}
+$('add').onclick = () => $('file').click();
+$('file').onchange = e => { addFiles([...e.target.files]); e.target.value = ''; };
+$('clear').onclick = () => { refs = []; drawRefs(); };
+const drop = $('drop');
+drop.ondragover = e => { e.preventDefault(); drop.classList.add('over'); };
+drop.ondragleave = () => drop.classList.remove('over');
+drop.ondrop = e => { e.preventDefault(); drop.classList.remove('over'); addFiles([...e.dataTransfer.files]); };
+document.addEventListener('paste', e => {
+  const fs = [...((e.clipboardData || {}).items || [])].filter(it => it.type.startsWith('image/')).map(it => it.getAsFile());
+  if (fs.length) { e.preventDefault(); addFiles(fs); }
+});
+
+// ---- 설정/금액 ----
+function won() {
+  let p = PRICE[$('model').value + '|' + $('size').value] || 200;
+  if ($('tier').value === 'flex') p = p / 2;
+  return Math.max(10, Math.round(p / 10) * 10);
+}
+function updateBtn() {
+  if (busy) return;
+  $('go').textContent = '그리기 · 약 ' + won() + '원' + ($('tier').value === 'flex' ? ' (반값)' : ' (정가)');
+  ['model', 'size', 'tier', 'ar'].forEach(k => ls.set(k, $(k).value));
+  const h = new Date().getHours(), notes = [];
+  if ($('tier').value === 'flex' && (h >= 18 || h < 9)) notes.push('지금은 저녁/밤이라 반값은 거의 거절돼. 거절되면 돈은 안 나가.');
+  const last = +ls.get('flexfail', 0);
+  if (last && Date.now() - last < 6 * 3600e3) notes.push('오늘 ' + new Date(last).toTimeString().slice(0, 5) + '에 반값이 한 번 거절됐었어.');
+  $('flexnote').textContent = notes.join(' ');
+}
+['model', 'size', 'tier', 'ar'].forEach(k => $(k).onchange = updateBtn);
+$('prompt').oninput = () => ls.set('prompt', $('prompt').value);
+function showMsg(t, cls) { const m = $('msg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
+
+// ---- 오류를 쉬운 말로 ----
+function explain(status, j, raw) {
+  const err = (j && j.error && j.error.message) || raw || '';
+  if (status === 503) return '구글 서버가 붐벼서 거절됐어(반값은 특히 저녁에 자주 이래). 이런 거절은 돈이 안 나가. 잠시 뒤에 다시 하거나 정가로 해봐.';
+  if (status === 429) return '사용 한도에 걸렸어. 몇 분 뒤에 다시 해봐.';
+  if (status === 400 && /API key|API_KEY/i.test(err)) return 'API 키가 잘못됐대. 위의 API 키 버튼에서 다시 넣어줘.';
+  if (status === 401 || status === 403) return 'API 키나 결제 쪽 문제로 구글이 거절했어. 키가 맞는지, 결제 잔액이 있는지 확인해봐.';
+  if (status === 404) return '그 모델 이름을 구글이 못 찾았대. 모델을 바꿔서 해봐.';
+  if (status === 400) return '구글이 요청을 안 받아줬어(400). 그림이나 설정을 바꿔서 해봐. (구글 메모: ' + err.slice(0, 150) + ')';
+  if (status >= 500) return '구글 서버 쪽 오류야(' + status + '). 잠시 뒤에 다시 해봐.';
+  return '알 수 없는 오류야(' + status + '). ' + err.slice(0, 150);
+}
+
+// ---- 기록 / 최근 그림 (이 기기 브라우저 안) ----
+let db = null;
+function openDB() {
+  return new Promise(res => {
+    try {
+      const r = indexedDB.open('gemini_grim', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('img', { keyPath: 'id' });
+      r.onsuccess = () => { db = r.result; res(); };
+      r.onerror = () => res();
+    } catch (e) { res(); }
+  });
+}
+function dbPut(rec) { return new Promise(res => { try { const t = db.transaction('img', 'readwrite'); t.objectStore('img').put(rec); t.oncomplete = res; t.onerror = res; } catch (e) { res(); } }); }
+function dbAll() { return new Promise(res => { try { const q = db.transaction('img').objectStore('img').getAll(); q.onsuccess = () => res(q.result || []); q.onerror = () => res([]); } catch (e) { res([]); } }); }
+function dbDel(id) { try { db.transaction('img', 'readwrite').objectStore('img').delete(id); } catch (e) {} }
+
+function addLog(o) {
+  let L = []; try { L = JSON.parse(ls.get('log', '[]')); } catch (e) {}
+  L.push(o); if (L.length > 2000) L = L.slice(-2000); ls.set('log', JSON.stringify(L)); showSpent();
+}
+function showSpent() {
+  let L = []; try { L = JSON.parse(ls.get('log', '[]')); } catch (e) {}
+  const today = new Date().toDateString();
+  const t = L.filter(x => x.ok && new Date(x.t).toDateString() === today);
+  $('spent').textContent = t.length ? '오늘 ' + t.length + '장, 약 ' + t.reduce((a, x) => a + x.won, 0) + '원' : '';
+}
+$('logdl').onclick = () => {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ls.get('log', '[]')], { type: 'application/json' }));
+  a.download = 'gemini_사용기록_' + stamp() + '.json'; a.click();
+};
+
+function stamp() { const d = new Date(), p = n => String(n).padStart(2, '0'); return d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '_' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds()); }
+
+function showResult(items) {
+  $('result').style.display = 'block';
+  const box = $('resimgs'); box.innerHTML = '';
+  items.forEach(it => {
+    const w = document.createElement('div');
+    w.innerHTML = '<img><div class="row"><a class="btn"><button>저장</button></a><button data-a="use">이 그림을 입력에 넣기</button><span class="note" style="margin:0">' + it.name + '</span></div>';
+    w.querySelector('img').src = it.data;
+    const a = w.querySelector('a'); a.href = it.data; a.download = it.name;
+    w.querySelector('[data-a=use]').onclick = async () => { refs.push(await shrink(it.data)); drawRefs(); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+    box.appendChild(w);
+  });
+}
+async function loadGal() {
+  const all = (await dbAll()).sort((a, b) => b.id - a.id);
+  all.slice(30).forEach(r => dbDel(r.id));   // 최근 30장만 보관
+  const g = $('gal'); g.innerHTML = '';
+  all.slice(0, 30).forEach(r => { const im = document.createElement('img'); im.src = r.data; im.title = r.name; im.onclick = () => { showResult([r]); $('result').scrollIntoView({ behavior: 'smooth' }); }; g.appendChild(im); });
+}
+
+// ---- 그리기 ----
+$('go').onclick = async () => {
+  if (busy) return;
+  const key = ls.get('key', '');
+  if (!key) { showKey(true); showMsg('먼저 API 키를 넣어줘.', 'bad'); return; }
+  const prompt = $('prompt').value;
+  if (!prompt.trim() && !refs.length) { showMsg('글이나 그림을 하나는 넣어줘.', 'bad'); return; }
+  const model = $('model').value, size = $('size').value, tier = $('tier').value, ar = $('ar').value, price = won();
+  const parts = [];
+  refs.forEach((d, i) => { parts.push({ text: 'Image ' + (i + 1) + ':' }); parts.push({ inlineData: { mimeType: 'image/png', data: d.split(',')[1] } }); });
+  parts.push({ text: prompt });   // 쓴 그대로
+  const cfg = { responseModalities: ['IMAGE', 'TEXT'], imageConfig: { imageSize: size } };
+  if (ar) cfg.imageConfig.aspectRatio = ar;
+  const body = { contents: [{ role: 'user', parts }], generationConfig: cfg, serviceTier: tier };
+
+  busy = true; $('go').disabled = true; showMsg('');
+  const t0 = Date.now();
+  const tick = setInterval(() => { $('go').textContent = '그리는 중... ' + Math.round((Date.now() - t0) / 1000) + '초 (보통 25~40초)'; }, 500);
+  const log = { t: new Date().toISOString(), model, size, tier, ar, prompt: prompt.slice(0, 200), refs: refs.length, won: price, ok: false };
+  try {
+    const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent', {
+      method: 'POST', headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const raw = await r.text(); let j = null; try { j = JSON.parse(raw); } catch (e) {}
+    log.status = r.status; log.sec = Math.round((Date.now() - t0) / 100) / 10;
+    if (!r.ok) {
+      if (tier === 'flex') ls.set('flexfail', Date.now());
+      log.err = raw.slice(0, 300); showMsg(explain(r.status, j, raw), 'bad');
+    } else {
+      const out = []; const txt = []; let fin = '';
+      for (const c of (j.candidates || [])) {
+        fin = c.finishReason || fin;
+        for (const p of ((c.content || {}).parts || [])) {
+          if (p.thought) continue;
+          if (p.inlineData) out.push('data:' + (p.inlineData.mimeType || 'image/png') + ';base64,' + p.inlineData.data);
+          else if (p.text) txt.push(p.text);
+        }
+      }
+      log.finish = fin; log.usage = j.usageMetadata;
+      const usedTier = ((j.usageMetadata || {}).serviceTier || tier);
+      if (out.length) {
+        log.ok = true; const base = stamp(); const items = [];
+        for (let i = 0; i < out.length; i++) {
+          const ext = out[i].startsWith('data:image/jpeg') ? 'jpg' : 'png';
+          const rec = { id: Date.now() + i, name: base + (i ? '_' + i : '') + '.' + ext, data: out[i] };
+          items.push(rec); await dbPut(rec);
+        }
+        showMsg('다 됐어 (' + log.sec + '초, ' + (usedTier === 'flex' ? '반값' : '정가') + '). 저장 버튼으로 받아둬.', 'ok');
+        showResult(items); loadGal();
+      } else {
+        const fb = j.promptFeedback || {};
+        if (/SAFETY|PROHIBITED/.test(fin) || fb.blockReason) showMsg('구글 안전 필터에 걸려서 그림이 안 나왔어(' + (fin || fb.blockReason) + '). 문구나 넣은 그림을 바꿔서 다시 해봐.', 'bad');
+        else if (txt.length) showMsg('그림 대신 글만 돌아왔어: ' + txt.join(' ').slice(0, 300), 'bad');
+        else showMsg('그림이 안 돌아왔어(' + fin + '). 다시 해봐.', 'bad');
+      }
+    }
+  } catch (e) {
+    log.err = String(e); showMsg('구글에 접속을 못 했어. 인터넷 연결을 확인하고 다시 해봐.', 'bad');
+  }
+  addLog(log);
+  clearInterval(tick); busy = false; $('go').disabled = false; updateBtn();
+};
+
+(async () => {
+  ['model', 'size', 'tier', 'ar'].forEach(k => { const v = ls.get(k, null); if (v !== null) $(k).value = v; });
+  $('prompt').value = ls.get('prompt', '');
+  if (!ls.get('key', '')) showKey(true);
+  updateBtn(); showSpent();
+  await openDB(); loadGal();
+})();
+</script>
+</body>
+</html>
