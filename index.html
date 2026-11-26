@@ -64,6 +64,11 @@ a.btn { text-decoration:none; }
 
 <div class="card">
   <div class="label">할 말 (쓴 그대로 보내)</div>
+  <div class="row" style="margin-top:0;margin-bottom:8px">
+    <select id="preset" style="flex:1;min-width:0"></select>
+    <button id="presetsave">지금 글 저장</button>
+    <button id="presetdel">삭제</button>
+  </div>
   <textarea id="prompt" placeholder="예: 왼쪽캐릭터를 오른쪽 규격과 그림체 스타일로 만들어줘"></textarea>
 </div>
 
@@ -173,6 +178,35 @@ function updateBtn() {
 }
 ['model', 'size', 'tier', 'ar'].forEach(k => $(k).onchange = updateBtn);
 $('prompt').oninput = () => ls.set('prompt', $('prompt').value);
+
+// ---- 프리셋 (고르면 할 말 칸에 들어감) ----
+const BUILTIN_PRESETS = [
+  { name: '실사 화보', text: "이 캐릭터를 실제 사람 모델이 찍은 하이엔드 패션 화보 사진으로 바꿔줘.\n원본의 체형 비율(작은 얼굴, 긴 다리)과 가슴, 허리, 골반, 허벅지 볼륨을 줄이지 말고 그대로 유지.\n포즈와 표정(눈매, 입 모양)도 원본 그대로.\n원본의 모든 소품과 장신구를 빠짐없이 유지: 머리 장식, 헤드셋, 손에 든 물건, 옷에 달린 부속까지. 새 소품을 지어내지 말 것.\n의상은 디자인, 색, 무늬, 재질감(유광, 무광, 시스루 등)을 원본 그대로, 코스튬이 아니라 명품 맞춤복처럼 고급 소재로 몸에 딱 맞게.\n머리색, 헤어스타일, 길이와 숱은 원본과 같게, 가발이 아니라 잔머리와 결이 보이는 실제 모발.\n얼굴은 아이돌급 미인, 자연스러운 피부결이 보이는 가벼운 보정.\n무기와 금속 장식은 실제 금속처럼 무게감 있게.\n깔끔한 스튜디오 배경, 부드러운 뷰티 조명, 얕은 심도.\n피규어, 인형, 3D 렌더 금지. 촬영 장비나 스태프가 보이지 않게." }
+];
+function userPresets() { try { return JSON.parse(localStorage.getItem('gg_presets') || '[]'); } catch (e) { return []; } }
+function saveUserPresets(a) { try { localStorage.setItem('gg_presets', JSON.stringify(a)); } catch (e) {} }
+function drawPresets() {
+  const sel = $('preset'); sel.innerHTML = '<option value="">프리셋 고르기</option>';
+  BUILTIN_PRESETS.forEach((p, i) => sel.add(new Option(p.name, 'b' + i)));
+  userPresets().forEach((p, i) => sel.add(new Option(p.name, 'u' + i)));
+}
+$('preset').onchange = () => {
+  const v = $('preset').value; if (!v) return;
+  const p = v[0] === 'b' ? BUILTIN_PRESETS[+v.slice(1)] : userPresets()[+v.slice(1)];
+  if (p) { $('prompt').value = p.text; $('prompt').dispatchEvent(new Event('input')); }
+};
+$('presetsave').onclick = () => {
+  const text = $('prompt').value; if (!text.trim()) return;
+  const name = (window.prompt('프리셋 이름', '') || '').trim(); if (!name) return;
+  const a = userPresets().filter(p => p.name !== name); a.push({ name, text }); saveUserPresets(a); drawPresets();
+};
+$('presetdel').onclick = () => {
+  const v = $('preset').value;
+  if (!v || v[0] !== 'u') { showMsg('기본 프리셋은 못 지우고, 내가 저장한 것만 지울 수 있어.', 'bad'); return; }
+  const a = userPresets(); a.splice(+v.slice(1), 1); saveUserPresets(a); drawPresets();
+};
+drawPresets();
+
 function showMsg(t, cls) { const m = $('msg'); m.textContent = t; m.className = 'msg ' + (cls || ''); }
 
 // ---- 오류를 쉬운 말로 ----
